@@ -1,143 +1,234 @@
-# Sample GenLayer project
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/license/mit/)
-[![Discord](https://img.shields.io/badge/Discord-Join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/8Jm4v89VAu)
-[![Telegram](https://img.shields.io/badge/Telegram--T.svg?style=social&logo=telegram)](https://t.me/genlayer)
-[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/yeagerai.svg?style=social&label=Follow%20%40GenLayer)](https://x.com/GenLayer)
-[![GitHub star chart](https://img.shields.io/github/stars/yeagerai/genlayer-project-boilerplate?style=social)](https://star-history.com/#yeagerai/genlayer-js)
+# RoastArena
 
-## About
-This project includes the boilerplate code for a GenLayer use case implementation, specifically a football bets game.
+**Roast. Compete. Earn.**
 
-## What's included
-- An example intelligent contract (Football Bets) with web access and LLM integration
-- **Direct mode tests** — fast, in-memory unit tests with web/LLM mocking (~ms per test)
-- **Integration tests** — full end-to-end tests against GenLayer Studio
-- **Contract linting** — static analysis to catch common contract issues before deployment
-- **CI pipeline** — GitHub Actions workflow for linting and direct tests
-- A production-ready Next.js 15 frontend with TypeScript, TanStack Query, and Radix UI
-- Configuration file template and deployment scripts
+RoastArena is an AI-powered competitive creator platform where founders and projects post roast challenges backed by real USDC prize pools, participants submit their funniest and most savage roasts, and GenLayer Intelligent Contracts judge every submission trustlessly — distributing rewards to the top performers when the challenge ends.
 
-## Requirements
-- Python >= 3.12
-- [GenLayer CLI](https://github.com/genlayerlabs/genlayer-cli) globally installed: `npm install -g genlayer`
-- GenLayer Studio (for integration tests and deployment): Install from [Docs](https://docs.genlayer.com/developers/intelligent-contracts/tooling-setup#using-the-genlayer-studio) or use the hosted [GenLayer Studio](https://studio.genlayer.com/)
+---
 
-## Project Structure
+## The Problem
+
+Anyone who has spent time in the Web3 creator economy knows the pattern. A project posts a content bounty on Superteam Earn, Scribble, or a similar platform. Dozens of creators submit work. And then the judgment comes down to one person — a founder, a community manager, or a committee — who picks their favorites based on gut feeling, personal taste, or bias. There is no transparent scoring. There is no clear criteria. And there is definitely no way to appeal.
+
+The result is a creator economy that talks about rewarding the best work but keeps distributing rewards the same way it always has — subjectively, opaquely, and inconsistently.
+
+RoastArena was built as a direct response to this. The roast battle format — funny, fast, competitive — is the perfect vehicle to prove that AI can judge creative work fairly, transparently, and on-chain. Every score is visible. Every criterion is defined. Every payout is automatic.
+
+---
+
+## How It Works
+
+Founders deposit USDC into a challenge contract on Base and write a roast prompt. The challenge goes live on the RoastArena platform. Creators submit their roasts before the deadline. When the challenge closes, a request is sent via LayerZero to a GenLayer Intelligent Contract, which runs each submission through an AI judge and scores it across five dimensions. The scores come back to Base, and the USDC is distributed to the top performers automatically — no human in the loop.
+
+The flow looks like this:
 
 ```
-contracts/              # Python intelligent contracts
-tests/
-  direct/               # Fast in-memory tests (no Studio required)
-    test_create_bet.py   # Bet creation logic
-    test_resolve_bet.py  # Bet resolution with web/LLM mocks
-    test_views.py        # Read-only view methods
-  integration/           # Full tests against GenLayer Studio
-    test_football_bets.py
-    fixtures.py          # Expected state fixtures
-frontend/               # Next.js 15 app (TypeScript, TanStack Query, Radix UI)
-deploy/                 # TypeScript deployment scripts
-gltest.config.yaml      # Test runner network configuration
-pyproject.toml          # Python/pytest configuration
-.github/workflows/      # CI pipeline
+Founder deposits USDC on Base
+         ↓
+Challenge goes live on RoastArena
+         ↓
+Creators submit roasts before deadline
+         ↓
+Judging triggered — LayerZero sends roasts to GenLayer
+         ↓
+GenLayer AI validators score each roast independently
+         ↓
+Consensus formed on scores
+         ↓
+Scores returned to Base via LayerZero
+         ↓
+USDC distributed to top creators automatically
 ```
 
-## Quick Start
+---
 
-### 1. Set up Python environment
+## AI Judging Criteria
 
-```shell
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+Each roast is scored from 0 to 100 across five categories:
+
+| Category | Weight | What it measures |
+|----------|--------|-----------------|
+| Humor | 30% | How funny and laugh-out-loud the roast is |
+| Creativity | 20% | How original and clever the approach is |
+| Originality | 20% | How fresh and unexpected the angle is |
+| Savagery | 20% | How brutal and cutting the roast lands |
+| Relevance | 10% | How well it addresses the challenge prompt |
+
+The overall score is the weighted average of all five. Every score and the AI reasoning behind it is stored on-chain and visible to everyone.
+
+---
+
+## Tech Stack
+
+**Frontend**
+- Next.js 15
+- TypeScript
+- Tailwind CSS
+- TanStack Query
+- Wagmi + Viem for wallet connection
+
+**Smart Contracts**
+- Solidity on Base (challenge creation, USDC escrow, reward distribution)
+- Python Intelligent Contract on GenLayer (AI judging, score consensus)
+- LayerZero V2 OApp for cross-chain messaging between Base and GenLayer
+
+**AI Layer**
+- GenLayer Intelligent Contracts with multi-validator AI consensus
+- Each roast is judged independently by multiple validators running different LLMs
+- Scores only finalize when validators reach consensus via the Equivalence Principle
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────┐
+│         Base Chain              │
+│                                 │
+│  RoastArena.sol                 │
+│  - Challenge creation           │
+│  - USDC escrow                  │
+│  - Roast submission             │
+│  - Reward distribution          │
+│         ↕ LayerZero V2          │
+└─────────────────────────────────┘
+           ↕ cross-chain messaging
+┌─────────────────────────────────┐
+│         GenLayer                │
+│                                 │
+│  RoastArenaJudge.py             │
+│  - Receives roast data          │
+│  - AI scores each submission    │
+│  - Validators reach consensus   │
+│  - Returns scores to Base       │
+└─────────────────────────────────┘
 ```
 
-### 2. Lint your contracts
+---
 
-Run the GenVM linter to catch issues before deployment:
+## What Makes This Different
 
-```shell
-genvm-lint check contracts/football_bets.py
+Every existing bounty and contest platform in Web3 — Superteam Earn, Scribble, Questbook, and others — relies on human judges. That means:
+
+- Judgment is slow
+- Criteria are vague
+- Results feel arbitrary
+- Winners have no way to understand why they lost
+
+RoastArena replaces the human judge with GenLayer AI consensus. The criteria are explicit and stored on-chain. The scoring is instant. The reasoning is transparent. And because multiple AI validators must agree before any score is finalized, no single model can game the result.
+
+This is not just a product improvement. It is a new primitive for the creator economy — trustless, on-chain creative evaluation.
+
+---
+
+## Why Roasts
+
+The roast format was chosen deliberately. Humor is one of the hardest creative outputs to evaluate fairly — it is inherently subjective, culturally nuanced, and easy to game with political relationships. If GenLayer AI can judge humor fairly and reach consensus on it across multiple validators, it can judge any creative work.
+
+The inspiration came directly from watching how Web3 content contests play out on platforms like Superteam Earn and Scribble. Founders post challenges. Communities respond. And the best work does not always win — the best-connected creator does. RoastArena fixes that. The roast battle format makes it fun. GenLayer makes it fair.
+
+---
+
+## Repository Structure
+
+```
+roast-arena/
+├── contracts/
+│   ├── RoastArena.sol          # Base chain contract
+│   └── RoastArenaJudge.py      # GenLayer Intelligent Contract
+├── frontend/
+│   ├── app/                    # Next.js app router
+│   ├── components/             # UI components
+│   ├── lib/
+│   │   ├── contracts/          # Contract interaction classes
+│   │   ├── hooks/              # React Query hooks
+│   │   └── genlayer/           # GenLayer client and wallet
+│   └── public/
+├── relayer/
+│   └── index.ts                # Off-chain LayerZero relayer service
+├── deploy/
+│   └── deploy.ts               # Deployment scripts
+└── README.md
 ```
 
-The linter catches:
-- Forbidden imports and non-deterministic calls
-- Invalid storage types (must use `TreeMap`, `DynArray`, `u256`, etc.)
-- Missing decorators and return type annotations
-- Non-deterministic operations outside equivalence principle blocks
-- And [20+ other rules](https://github.com/genlayerlabs/genvm-linter)
+---
 
-### 3. Run direct mode tests
+## Getting Started
 
-Direct mode tests run contracts in-memory without needing GenLayer Studio. They use mocks for web requests and LLM calls, giving you fast feedback (~milliseconds per test):
+**Prerequisites**
+- Node.js 18+
+- A Base Sepolia RPC URL
+- A GenLayer Studio account at studio.genlayer.com
+- MetaMask with Base Sepolia and GenLayer Studio networks added
 
-```shell
-pytest tests/direct/ -v
-```
+**Installation**
 
-Direct mode features used in these tests:
-- `direct_deploy("contracts/file.py")` — deploy contract in memory
-- `direct_vm.sender = address` — set transaction sender
-- `direct_vm.mock_web(pattern, response)` — mock HTTP/render calls
-- `direct_vm.mock_llm(pattern, response)` — mock LLM responses
-- `direct_vm.expect_revert("message")` — assert expected failures
-- `direct_vm.clear_mocks()` — reset mocks between calls
-
-### 4. Deploy the contract
-
-1. Choose your network: `genlayer network`
-2. Deploy: `genlayer deploy` (runs the script in `/deploy/deployScript.ts`)
-
-### 5. Run integration tests
-
-Integration tests deploy the contract to GenLayer Studio and test with real consensus:
-
-```shell
-gltest tests/integration/ -v -s
-```
-
-These require GenLayer Studio running (local or hosted).
-
-### 6. Set up the frontend
-
-1. Copy `frontend/.env.example` to `frontend/.env`
-2. Add your deployed contract address as `NEXT_PUBLIC_CONTRACT_ADDRESS`
-3. Run:
-
-```shell
-cd frontend
+```bash
+git clone https://github.com/Emman442/roast-arena
+cd roast-arena
 npm install
-npm run dev
 ```
 
-The app will be available at http://localhost:3000/.
+**Environment setup**
 
-## How the Football Bets Contract Works
+```bash
+cp .env.example .env
+```
 
-1. **Creating Bets**: Users bet on a football match by providing the game date, teams, and predicted winner.
-2. **Resolving Bets**: After the match, the contract fetches results from BBC Sport, uses an LLM to extract the score, and validates via the equivalence principle.
-3. **Points**: Correct predictions earn points. Users can query their points or the leaderboard.
+Fill in:
 
-## Testing Strategy
+```env
+NEXT_PUBLIC_CONTRACT_ADDRESS=<deployed RoastArena.sol address>
+NEXT_PUBLIC_GENLAYER_CONTRACT_ADDRESS=<deployed RoastArenaJudge address>
+NEXT_PUBLIC_BASE_RPC_URL=<your Base Sepolia RPC>
+RELAYER_PRIVATE_KEY=<relayer wallet private key>
+```
 
-| Test Type | Command | Speed | Requires Studio |
-|-----------|---------|-------|-----------------|
-| **Lint** | `genvm-lint check contracts/*.py` | ~250ms | No |
-| **Direct** | `pytest tests/direct/ -v` | ~ms/test | No |
-| **Integration** | `gltest tests/integration/ -v -s` | ~min/test | Yes |
+**Deploy contracts**
 
-**Recommended workflow:**
-1. Lint after every contract change
-2. Run direct tests frequently during development
-3. Run integration tests before deployment to verify consensus behavior
+```bash
+# Deploy Solidity contract to Base Sepolia
+npm run deploy:base
 
-For AI coding agents (Claude Code, Cursor, etc.), the linter and direct tests provide the fast feedback loop needed for iterative development without requiring a running Studio instance.
+# Deploy Intelligent Contract to GenLayer Studio
+npm run deploy:genlayer
+```
 
-## Community
-- **[Discord](https://discord.gg/8Jm4v89VAu)**: Discussions, support, and announcements
-- **[Telegram](https://t.me/genlayer)**: Informal chats and quick updates
+**Start the relayer**
 
-## Documentation
-For detailed information, see our [documentation](https://docs.genlayer.com/).
+```bash
+npm run relayer
+```
 
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**Start the frontend**
+
+```bash
+cd frontend && npm run dev
+```
+
+---
+
+## Deployment
+
+| Contract | Network | Address |
+|----------|---------|---------|
+| RoastArena.sol | Base Sepolia | TBD |
+| RoastArenaJudge.py | GenLayer Studionet | TBD |
+
+---
+
+## Team
+
+Built by Emmanuel Ndema — Web3 developer and content creator active across the Superteam and GenLayer ecosystems.
+
+- Twitter: [@EmmanuelNdema1](https://twitter.com/EmmanuelNdema1)
+- GitHub: [Emman442](https://github.com/Emman442)
+
+---
+
+## Built With
+
+- [GenLayer](https://genlayer.com) — AI-native blockchain for Intelligent Contracts
+- [LayerZero V2](https://layerzero.network) — Cross-chain messaging protocol
+- [Base](https://base.org) — Ethereum L2 by Coinbase
+- [Circle USDC](https://circle.com/usdc) — Native USDC on Base

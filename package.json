@@ -2,7 +2,9 @@
   "name": "genlayer-project",
   "type": "module",
   "private": true,
-  "workspaces": ["frontend"],
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
     "dev": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
@@ -12,5 +14,8 @@
   },
   "devDependencies": {
     "genlayer-js": "^1.1.8"
+  },
+  "dependencies": {
+    "@privy-io/react-auth": "^3.29.2"
   }
 }
