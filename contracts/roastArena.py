@@ -47,6 +47,8 @@ class ScoredRoast:
 class Challenge:
     challenge_id: str
     founder: str
+    project_name: str
+    founder_address: str
     prompt: str
     prize_pool: i32
     deadline: i64
@@ -134,6 +136,8 @@ class RoastArena(gl.Contract):
     def create_challenge(
         self,
         prompt: str,
+        founder_name: str,
+        project_name: str,
         prize_pool: i32,
         duration_seconds: i64,
         created_at: str
@@ -153,14 +157,19 @@ class RoastArena(gl.Contract):
 
         self.challenges[challenge_id] = Challenge(
             challenge_id=challenge_id,
-            founder=founder,
+            founder=founder_name,
+            founder_address=founder,
+            project_name=project_name,
             prompt=prompt,
             prize_pool=prize_pool,
-            deadline=i64(int(datetime.now(timezone.utc).timestamp() * 1000) + int(duration_seconds) * 1000),
+            deadline=i64(
+                int(datetime.now(timezone.utc).timestamp() * 1000)
+                + int(duration_seconds) * 1000
+            ),
             status="active",
             created_at=created_at,
             participants=[],
-            roasts=TreeMap(),
+            roasts=gl.storage.inmem_allocate(TreeMap[str, str]),
             scores=[]
         )
 
