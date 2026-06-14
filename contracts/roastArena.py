@@ -32,13 +32,8 @@ class Creator:
 class ScoredRoast:
     creator: str
     roast: str
-    humor: i32
-    creativity: i32
-    originality: i32
-    savagery: i32
-    relevance: i32
     overall: i32
-    reasoning: str
+    # reasoning: str
     rank: i32
 
 
@@ -147,7 +142,7 @@ class RoastArena(gl.Contract):
 
         assert 10 <= len(prompt) <= 300, "Prompt must be 10-300 chars"
         assert prize_pool > 0, "Prize pool must be greater than 0"
-        assert duration_seconds >= 3600, "Duration must be at least 1 hour"
+        # assert duration_seconds >= 3600, "Duration must be at least 1 hour"
 
         expected_value = u256(prize_pool) * u256(10**18)
         assert gl.message.value == expected_value, "Must send exact prize pool in GEN"
@@ -192,35 +187,101 @@ class RoastArena(gl.Contract):
 
     # ─── Roast Submission ─────────────────────────────────────
 
+
     @gl.public.write
-    def submit_roast(
-        self,
-        challenge_id: str,
-        roast: str
-    ) -> None:
+    def submit_roast(self, challenge_id: str, roast: str) -> None:
         creator = str(gl.message.sender_address)
         self._only_registered(creator)
 
         assert challenge_id in self.challenges, "Challenge not found"
+
         c = self.challenges[challenge_id]
+
         assert c.status == "active", "Challenge is not active"
 
         now = int(datetime.now(timezone.utc).timestamp() * 1000)
+
         assert now < int(c.deadline), "Challenge deadline has passed"
-        assert creator != c.founder, "Founder cannot submit a roast"
-        assert creator not in c.participants, "Already submitted a roast"
+        assert creator != c.founder_address, "Founder cannot submit"
+        assert creator not in c.participants, "Already submitted"
         assert 10 <= len(roast) <= 500, "Roast must be 10-500 chars"
+
+        prompt = c.prompt
+
+        def evaluate_roast(r=roast, p=prompt):
+            return gl.nondet.exec_prompt(
+                f"""
+    You are judging a roast battle.
+
+    Challenge Prompt:
+    {p}
+
+    Roast:
+    {r}
+
+    Classify the roast into EXACTLY one category:
+
+    TERRIBLE
+    WEAK
+    AVERAGE
+    GOOD
+    LEGENDARY
+
+    Definitions:
+
+    TERRIBLE = not funny, irrelevant, low effort
+    WEAK = somewhat relevant but not clever
+    AVERAGE = decent joke, mildly amusing
+    GOOD = genuinely funny and creative
+    LEGENDARY = exceptional roast, memorable, highly original
+
+    Reply with ONLY one word:
+    TERRIBLE
+    WEAK
+    AVERAGE
+    GOOD
+    LEGENDARY
+    """
+            ).strip()
+
+        category = gl.eq_principle.prompt_comparative(
+            evaluate_roast,
+            principle="""
+    Roasts that are similarly funny, creative,
+    relevant and savage should receive the same
+    quality classification.
+    """
+        )
+
+        category = category.upper().strip()
+
+        score_map = {
+            "TERRIBLE": 10,
+            "WEAK": 30,
+            "AVERAGE": 50,
+            "GOOD": 75,
+            "LEGENDARY": 100,
+        }
+
+        overall = score_map.get(category, 50)
+
+        scored = ScoredRoast(
+            creator=creator,
+            roast=roast,
+            overall=i32(overall),
+            rank=i32(0)
+        )
 
         self.challenges[challenge_id].participants.append(creator)
         self.challenges[challenge_id].roasts[creator] = roast
+        self.challenges[challenge_id].scores.append(scored)
+
         self.creators[creator].total_challenges_entered += i32(1)
 
     # ─── Judging ──────────────────────────────────────────────
 
     @gl.public.write
     def judge_challenge(self, challenge_id: str) -> None:
-        triggered_by = str(gl.message.sender_address)
-
         assert challenge_id in self.challenges, "Challenge not found"
         c = self.challenges[challenge_id]
         assert c.status == "active", "Challenge is not active"
@@ -229,83 +290,11 @@ class RoastArena(gl.Contract):
         assert now >= int(c.deadline), "Challenge has not ended yet"
         assert len(c.participants) > 0, "No submissions to judge"
 
-        self.challenges[challenge_id].status = "judging"
-
-        prompt = c.prompt
-        participants = list(c.participants)
-        scores: DynArray[ScoredRoast] = []
-
-        for creator in participants:
-            roast = c.roasts[creator]
-
-            def score_this_roast(r=roast, p=prompt) -> str:
-                scoring_prompt = f"""You are an expert roast judge evaluating a submission for a competitive roast battle.
-
-Challenge prompt: "{p}"
-
-Roast submission: "{r}"
-
-Score this roast on each dimension from 0 to 100:
-- humor: How funny and laugh-out-loud is it?
-- creativity: How original and clever is the approach?
-- originality: How fresh and unexpected is the angle?
-- savagery: How brutal and cutting does it land?
-- relevance: How well does it address the challenge prompt?
-
-Calculate overall as: (humor * 0.30) + (creativity * 0.20) + (originality * 0.20) + (savagery * 0.20) + (relevance * 0.10)
-Round overall to the nearest integer.
-
-Reply with ONLY this JSON, no extra text:
-{{"humor":<int>,"creativity":<int>,"originality":<int>,"savagery":<int>,"relevance":<int>,"overall":<int>,"reasoning":"one sentence explaining the score"}}
-"""
-                result = gl.nondet.exec_prompt(scoring_prompt).strip()
-                cleaned = result.replace("```json", "").replace("```", "").strip()
-                try:
-                    parsed = json.loads(cleaned)
-                    normalized = {
-                        "humor": max(0, min(100, int(parsed.get("humor", 50)))),
-                        "creativity": max(0, min(100, int(parsed.get("creativity", 50)))),
-                        "originality": max(0, min(100, int(parsed.get("originality", 50)))),
-                        "savagery": max(0, min(100, int(parsed.get("savagery", 50)))),
-                        "relevance": max(0, min(100, int(parsed.get("relevance", 50)))),
-                        "overall": max(0, min(100, int(parsed.get("overall", 50)))),
-                        "reasoning": str(parsed.get("reasoning", ""))
-                    }
-                    return json.dumps(normalized, sort_keys=True, separators=(',', ':'))
-                except:
-                    return json.dumps({
-                        "humor": 50, "creativity": 50, "originality": 50,
-                        "savagery": 50, "relevance": 50, "overall": 50,
-                        "reasoning": "Could not parse score"
-                    }, sort_keys=True, separators=(',', ':'))
-
-            raw = gl.eq_principle.strict_eq(score_this_roast)
-
-            try:
-                data = json.loads(raw)
-            except:
-                data = {
-                    "humor": 50, "creativity": 50, "originality": 50,
-                    "savagery": 50, "relevance": 50, "overall": 50,
-                    "reasoning": "Parse error"
-                }
-
-            scored = ScoredRoast(
-                creator=creator,
-                roast=roast,
-                humor=i32(data.get("humor", 50)),
-                creativity=i32(data.get("creativity", 50)),
-                originality=i32(data.get("originality", 50)),
-                savagery=i32(data.get("savagery", 50)),
-                relevance=i32(data.get("relevance", 50)),
-                overall=i32(data.get("overall", 50)),
-                reasoning=data.get("reasoning", ""),
-                rank=i32(0)
-            )
-            scores.append(scored)
-
-        # Sort by overall score descending and assign ranks
+        # No AI here — scores already stored on submission
+        scores = list(c.scores)
         n = len(scores)
+
+        # Sort by overall descending
         for i in range(n - 1):
             for j in range(n - i - 1):
                 if scores[j].overall < scores[j + 1].overall:
@@ -317,7 +306,6 @@ Reply with ONLY this JSON, no extra text:
         self.challenges[challenge_id].scores = scores
         self.challenges[challenge_id].status = "completed"
 
-        # Distribute GEN rewards
         self._distribute_rewards(challenge_id, scores, c.prize_pool)
 
     # ─── Reward Distribution ──────────────────────────────────
