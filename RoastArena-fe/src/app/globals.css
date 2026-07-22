@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 260 17% 4%;
+    --foreground: 0 0% 100%;
+    --card: 260 17% 6%;
+    --card-foreground: 0 0% 100%;
+    --popover: 260 17% 6%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 283 98% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 196 98% 54%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 260 10% 15%;
+    --muted-foreground: 260 10% 60%;
+    --accent: 283 98% 54%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 260 15% 15%;
+    --input: 260 15% 15%;
+    --ring: 283 98% 54%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+    background-image: 
+      radial-gradient(circle at 50% 0%, rgba(188, 19, 254, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 0% 100%, rgba(19, 193, 254, 0.1) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline tracking-tight;
+  }
+}
+
+.glass {
+  @apply bg-opacity-20 backdrop-blur-lg border border-white/10;
+  background-color: rgba(11, 10, 12, 0.6);
+}
+
+.neon-border {
+  box-shadow: 0 0 10px rgba(188, 19, 254, 0.3);
+}
+
+.neon-border-blue {
+  box-shadow: 0 0 10px rgba(19, 193, 254, 0.3);
+}
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(188, 19, 254, 0.5);
+}
+
+.gold-glow {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.hero-gradient {
+  background: linear-gradient(180deg, rgba(188, 19, 254, 0.1) 0%, rgba(11, 10, 12, 0) 100%);
+}
+
+.battle-button {
+  @apply relative overflow-hidden transition-all duration-300;
+}
+
+.battle-button::after {
+  content: '';
+  @apply absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-300;
+}
+
+.battle-button:hover::after {
+  @apply opacity-100;
+}
+
+.arena-card {
+  @apply transition-transform duration-300 hover:-translate-y-2;
+}
